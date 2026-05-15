@@ -1,8 +1,7 @@
-import React from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
-const Navbar: React.FC = () => {
+export default function Navbar() {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
 
@@ -12,18 +11,16 @@ const Navbar: React.FC = () => {
   };
 
   return (
-    <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 20px', backgroundColor: '#f0f0f0' }}>
-      <h2>Habit Tracker</h2>
+    <nav className="navbar">
+      <h1 className="navbar__brand">Habit Tracker</h1>
       {user && (
-        <div>
-          <span>Welcome, {user.email}</span>
-          <button onClick={handleLogout} style={{ marginLeft: '10px', padding: '5px 10px' }}>
+        <div className="navbar__session">
+          <span className="navbar__email">{user.email}</span>
+          <button className="button button--secondary" onClick={handleLogout} type="button">
             Logout
           </button>
         </div>
       )}
     </nav>
   );
-};
-
-export default Navbar;
+}

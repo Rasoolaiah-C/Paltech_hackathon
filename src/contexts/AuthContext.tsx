@@ -1,9 +1,18 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+import type { User } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+} from 'firebase/auth';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 
 interface AuthContextType {
   user: User | null;
+  loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -24,34 +33,49 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
     });
+
     return unsubscribe;
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
-  };
+  }, []);
 
-  const register = async (email: string, password: string) => {
-    await createUserWithEmailAndPassword(auth, email, password);
-  };
+  const register = useCallback(async (email: string, password: string) => {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userId = userCredential.user.uid;
 
-  const logout = async () => {
+    // Create user document in Firestore
+    await setDoc(doc(db, 'users', userId), {
+      userId,
+      email,
+      createdAt: serverTimestamp(),
+    });
+  }, []);
+
+  const logout = useCallback(async () => {
     await signOut(auth);
-  };
+  }, []);
 
-  const value: AuthContextType = {
-    user,
-    login,
-    register,
-    logout,
-  };
+  const value = useMemo<AuthContextType>(
+    () => ({
+      user,
+      loading,
+      login,
+      register,
+      logout,
+    }),
+    [user, loading, login, register, logout],
+  );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+  return createElement(AuthContext.Provider, { value }, children);
+}

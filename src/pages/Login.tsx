@@ -1,57 +1,94 @@
-import React, { useState } from 'react';
+import type { FormEvent } from 'react';
+import { useState } from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
 
-const Login: React.FC = () => {
+interface LocationState {
+  from?: {
+    pathname?: string;
+  };
+}
+
+export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isRegister, setIsRegister] = useState(false);
-  const { login, register } = useAuth();
+  const [error, setError] = useState('');
+  const { loading, login, register, user } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
+  const redirectTo = (location.state as LocationState | null)?.from?.pathname ?? '/dashboard';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  if (!loading && user) {
+    return <Navigate to={redirectTo} replace />;
+  }
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError('');
+
     try {
       if (isRegister) {
         await register(email, password);
       } else {
         await login(email, password);
       }
-      navigate('/dashboard');
+
+      navigate(redirectTo, { replace: true });
     } catch (error) {
-      alert('Error: ' + (error as Error).message);
+      setError((error as Error).message);
     }
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', width: '300px' }}>
-        <h2>{isRegister ? 'Register' : 'Login'}</h2>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{ marginBottom: '10px', padding: '8px' }}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          style={{ marginBottom: '10px', padding: '8px' }}
-        />
-        <button type="submit" style={{ padding: '10px', marginBottom: '10px' }}>
+    <main className="auth-page">
+      <form className="auth-form" onSubmit={handleSubmit}>
+        <div>
+          <p className="eyebrow">Habit Tracker</p>
+          <h1>{isRegister ? 'Create account' : 'Welcome back'}</h1>
+        </div>
+
+        {error && <p className="form-error">{error}</p>}
+
+        <label>
+          Email
+          <input
+            autoComplete="email"
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="you@example.com"
+            required
+            type="email"
+            value={email}
+          />
+        </label>
+
+        <label>
+          Password
+          <input
+            autoComplete={isRegister ? 'new-password' : 'current-password'}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="At least 6 characters"
+            required
+            type="password"
+            value={password}
+          />
+        </label>
+
+        <button className="button" disabled={loading} type="submit">
           {isRegister ? 'Register' : 'Login'}
         </button>
-        <button type="button" onClick={() => setIsRegister(!isRegister)} style={{ padding: '10px' }}>
+
+        <button
+          className="button button--ghost"
+          onClick={() => {
+            setError('');
+            setIsRegister((current) => !current);
+          }}
+          type="button"
+        >
           {isRegister ? 'Already have an account? Login' : 'Need an account? Register'}
         </button>
       </form>
-    </div>
+    </main>
   );
-};
-
-export default Login;
+}

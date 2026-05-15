@@ -1,9 +1,31 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /habits/{habitId}/checkIns/{checkInId} {
+      allow read, write: if request.auth != null
+        && get(/databases/$(database)/documents/habits/$(habitId)).data.userId == request.auth.uid;
+    }
+
+    match /habits/{habitId}/exceptions/{exceptionId} {
+      allow read, write: if request.auth != null
+        && get(/databases/$(database)/documents/habits/$(habitId)).data.userId == request.auth.uid;
+    }
+
+    match /habits/{habitId}/reminders/{reminderId} {
+      allow read, write: if request.auth != null
+        && get(/databases/$(database)/documents/habits/$(habitId)).data.userId == request.auth.uid;
+    }
+
+    match /users/{userId}/badges/{badgeId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
     match /{document=**} {
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.userId
+        && request.auth.uid == request.resource.data.userId;
     }
   }
 }
