@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import HabitStreaks from './HabitStreaks';
 import type { CheckInStatus, HabitWithProgress } from '../types/habit';
+import { toLocalDateKey } from '../utils/localDate';
 
 interface HabitListProps {
   emptyMessage: string;
@@ -7,11 +10,12 @@ interface HabitListProps {
   onDeleteHabit: (habitId: string) => Promise<void>;
   onEditHabit: (habit: HabitWithProgress) => void;
   onPauseHabit: (habitId: string, startDate: string, endDate: string, reason: string) => Promise<void>;
+  onUpdateStatus?: (habitId: string, status: HabitWithProgress['status']) => Promise<void>;
   onRecordCheckIn: (habitId: string, status: CheckInStatus, value: number, note: string) => Promise<void>;
   title: string;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => toLocalDateKey();
 
 const scheduleLabel = (habit: HabitWithProgress) => {
   if (habit.status === 'Paused') {
@@ -66,6 +70,7 @@ export default function HabitList({
   onEditHabit,
   onPauseHabit,
   onRecordCheckIn,
+  onUpdateStatus,
   title,
 }: HabitListProps) {
   const [savingHabitId, setSavingHabitId] = useState<string | null>(null);
@@ -155,7 +160,14 @@ export default function HabitList({
             <h4>{groupName}</h4>
             <div className="habit-list__items">
               {groupHabits.map((habit) => (
-                <article className="habit-card habit-card--minimal" key={habit.id}>
+                <article
+                  className={
+                    habit.status === 'Archived'
+                      ? 'habit-card habit-card--minimal habit-card--archived'
+                      : 'habit-card habit-card--minimal'
+                  }
+                  key={habit.id}
+                >
                   <div className="habit-card__content">
                     <div>
                       <h4>{habit.name}</h4>
@@ -175,7 +187,12 @@ export default function HabitList({
                   </div>
 
                   <div className="habit-card__summary">
-                    <span>{habit.currentStreak} day streak</span>
+                    <HabitStreaks
+                      compact
+                      currentStreak={habit.currentStreak}
+                      longestStreak={habit.longestStreak}
+                      scheduleType={habit.scheduleType}
+                    />
                     {habit.category && <span>{habit.category}</span>}
                     {habit.exceptions.some((exception) => {
                       const startDate = exception.startDate ?? exception.date;
@@ -205,25 +222,72 @@ export default function HabitList({
                   )}
 
                   <div className="habit-card__actions">
-                    <button
-                      className="button"
-                      disabled={savingHabitId === habit.id || !habit.isExpectedToday || habit.isTodayDone}
-                      onClick={() => handleCheckIn(habit, 'Done')}
-                      type="button"
-                    >
-                      {habit.isTodayDone ? 'Done Today' : 'Mark Done'}
-                    </button>
+                    {habit.status !== 'Archived' && (
+                      <button
+                        className="button"
+                        disabled={savingHabitId === habit.id || !habit.isExpectedToday || habit.isTodayDone}
+                        onClick={() => handleCheckIn(habit, 'Done')}
+                        type="button"
+                      >
+                        {habit.isTodayDone ? 'Done Today' : 'Mark Done'}
+                      </button>
+                    )}
+                    <Link className="button button--ghost" to={`/habits/${habit.id}`}>
+                      Open
+                    </Link>
                     <button className="button button--ghost" onClick={() => onEditHabit(habit)} type="button">
                       Edit
                     </button>
-                    <button
-                      className="button button--ghost"
-                      disabled={savingHabitId === habit.id}
-                      onClick={() => setPauseHabitId(pauseHabitId === habit.id ? null : habit.id)}
-                      type="button"
-                    >
-                      Pause Dates
-                    </button>
+                    {onUpdateStatus && habit.status === 'Active' && (
+                      <button
+                        className="button button--ghost"
+                        disabled={savingHabitId === habit.id}
+                        onClick={() => handleAction(habit.id, () => onUpdateStatus(habit.id, 'Paused'))}
+                        type="button"
+                      >
+                        Pause
+                      </button>
+                    )}
+                    {onUpdateStatus && habit.status === 'Paused' && (
+                      <button
+                        className="button"
+                        disabled={savingHabitId === habit.id}
+                        onClick={() => handleAction(habit.id, () => onUpdateStatus(habit.id, 'Active'))}
+                        type="button"
+                      >
+                        Resume
+                      </button>
+                    )}
+                    {onUpdateStatus && habit.status !== 'Archived' && (
+                      <button
+                        className="button button--ghost"
+                        disabled={savingHabitId === habit.id}
+                        onClick={() => handleAction(habit.id, () => onUpdateStatus(habit.id, 'Archived'))}
+                        type="button"
+                      >
+                        Archive
+                      </button>
+                    )}
+                    {onUpdateStatus && habit.status === 'Archived' && (
+                      <button
+                        className="button"
+                        disabled={savingHabitId === habit.id}
+                        onClick={() => handleAction(habit.id, () => onUpdateStatus(habit.id, 'Active'))}
+                        type="button"
+                      >
+                        Unarchive
+                      </button>
+                    )}
+                    {habit.status !== 'Archived' && (
+                      <button
+                        className="button button--ghost"
+                        disabled={savingHabitId === habit.id}
+                        onClick={() => setPauseHabitId(pauseHabitId === habit.id ? null : habit.id)}
+                        type="button"
+                      >
+                        Pause Dates
+                      </button>
+                    )}
                     <button
                       className="button button--danger"
                       disabled={savingHabitId === habit.id}

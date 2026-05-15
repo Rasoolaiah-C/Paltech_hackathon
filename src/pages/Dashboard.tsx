@@ -3,8 +3,9 @@ import CreateHabitForm from '../components/CreateHabitForm';
 import DueTodayPanel from '../components/DueTodayPanel';
 import { useHabits } from '../hooks/useHabits';
 import type { CheckInStatus, HabitWithProgress } from '../types/habit';
+import { toLocalDateKey } from '../utils/localDate';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => toLocalDateKey();
 
 export default function Dashboard() {
   const {

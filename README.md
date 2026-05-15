@@ -1,73 +1,54 @@
-# React + TypeScript + Vite
+# Streaks — Habit Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript + Vite habit tracker with Firebase Authentication and Firestore persistence.
 
-Currently, two official plugins are available:
+## Tech stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Frontend:** React 19, TypeScript, Vite, React Router
+- **Auth:** Firebase Auth (email/password; passwords hashed by Firebase)
+- **Database:** Cloud Firestore (real-time sync)
+- **Styling:** Global CSS with design tokens
 
-## React Compiler
+## Persistence (FR32)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+All application data is stored in **Firebase Firestore** and survives restarts:
 
-## Expanding the ESLint configuration
+| Collection / path | Contents |
+|-------------------|----------|
+| `users/{userId}` | Profile (`email`, `createdAt`) |
+| `habits/{habitId}` | Habit configuration (`userId` for isolation) |
+| `habits/{habitId}/checkIns/{date}` | One check-in per habit per date |
+| `habits/{habitId}/exceptions/{id}` | Single-day or date-range exceptions |
+| `habits/{habitId}/reminders/default` | At most one reminder per habit |
+| `users/{userId}/badges/{badgeId}` | Earned badges with `earnedAt` timestamp |
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Security rules in `firestore.rules` ensure users can only access their own documents.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Badges (FR26)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Fixed badge set (awarded automatically and stored permanently):
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Badge ID | Title | Criteria |
+|----------|-------|------------|
+| `first-check-in` | First Step | Complete any habit once (Done check-in) |
+| `streak-7` | 7-Day Streak | Longest streak ≥ 7 on any habit |
+| `streak-30` | 30-Day Streak | Longest streak ≥ 30 on any habit |
+| `completions-100` | Century Club | 100 total Done check-ins across all habits |
+| `five-active-habits` | Habit Builder | 5 active habits at the same time |
+
+Earned badges are never revoked (FR27). View them under **Badges** in the app.
+
+## Scripts
+
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run build
+npm run lint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Deploy Firestore rules
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+firebase deploy --only firestore:rules
 ```

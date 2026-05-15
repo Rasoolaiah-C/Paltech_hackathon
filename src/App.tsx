@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AllHabits from './pages/AllHabits';
 import Badges from './pages/Badges';
+import HabitDetailPage from './pages/HabitDetailPage';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/habits" element={<AllHabits />} />
+            <Route path="/habits/:habitId" element={<HabitDetailPage />} />
             <Route path="/badges" element={<Badges />} />
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" />} />

@@ -1,9 +1,10 @@
 import type { FormEvent } from 'react';
 import { useState } from 'react';
-import type { CreateHabitInput, Habit, ScheduleType, TargetType } from '../types/habit';
+import type { CreateHabitInput, Habit, HabitStatus, ScheduleType, TargetType } from '../types/habit';
+import { toLocalDateKey } from '../utils/localDate';
 
 const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => toLocalDateKey();
 const timeStep = (unitLabel: string) => {
   const normalisedUnit = unitLabel.trim().toLowerCase();
   return ['hour', 'hours', 'hr', 'hrs'].includes(normalisedUnit) ? 0.25 : 1;
@@ -28,6 +29,7 @@ export default function CreateHabitForm({ habit, onCancel, onCreateHabit }: Crea
   const [weeklyTargetCount, setWeeklyTargetCount] = useState(habit?.weeklyTargetCount ?? 1);
   const [startDate, setStartDate] = useState(habit?.startDate ?? today());
   const [endDate, setEndDate] = useState(habit?.endDate ?? '');
+  const [status, setStatus] = useState<HabitStatus>(habit?.status ?? 'Active');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -102,7 +104,7 @@ export default function CreateHabitForm({ habit, onCancel, onCreateHabit }: Crea
         weeklyTargetCount,
         startDate,
         endDate,
-        status: habit?.status ?? 'Active',
+        status,
       });
       if (isEditing) {
         onCancel?.();
@@ -253,6 +255,17 @@ export default function CreateHabitForm({ habit, onCancel, onCreateHabit }: Crea
             </label>
           ))}
         </fieldset>
+      )}
+
+      {isEditing && (
+        <label>
+          Status
+          <select onChange={(event) => setStatus(event.target.value as HabitStatus)} value={status}>
+            <option value="Active">Active</option>
+            <option value="Paused">Paused</option>
+            <option value="Archived">Archived</option>
+          </select>
+        </label>
       )}
 
       {scheduleType === 'WeeklyCount' && (

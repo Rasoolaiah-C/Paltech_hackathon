@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { collection, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import type { CheckIn, CheckInInput, CheckInStatus } from '../types/habit';
@@ -57,6 +57,11 @@ export function useCheckIns(habitId?: string) {
       }
 
       const date = input.date ?? toLocalDateKey();
+      const todayKey = toLocalDateKey();
+
+      if (date > todayKey) {
+        throw new Error('Check-ins cannot be recorded for future dates.');
+      }
 
       if (isOlderThanDays(date, 7)) {
         throw new Error('Check-ins can only be backdated up to 7 days.');
@@ -87,8 +92,24 @@ export function useCheckIns(habitId?: string) {
     [habitId, user],
   );
 
+  const deleteCheckIn = useCallback(
+    async (date: string) => {
+      if (!user) {
+        throw new Error('You must be logged in to remove a check-in.');
+      }
+
+      if (!habitId) {
+        throw new Error('Habit is required to remove a check-in.');
+      }
+
+      await deleteDoc(doc(db, 'habits', habitId, 'checkIns', date));
+    },
+    [habitId, user],
+  );
+
   return {
     checkIns: user && habitId ? checkIns : [],
+    deleteCheckIn,
     error,
     loading: user && habitId ? loading : false,
     upsertCheckIn,

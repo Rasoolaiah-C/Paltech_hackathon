@@ -59,11 +59,17 @@ const getCompletionRate30Days = (habit: Habit, checkIns: CheckIn[], exceptions: 
 
 const getDailyCurrentStreak = (habit: Habit, checkIns: CheckIn[], exceptions: Exception[]) => {
   const done = doneDates(checkIns);
-  let cursor = toLocalDateKey();
+  const todayKey = toLocalDateKey();
+  let cursor = todayKey;
   let streak = 0;
 
   for (let guard = 0; guard < 730; guard += 1) {
     if (!isHabitScheduledOnDate(habit, cursor, exceptions)) {
+      cursor = addLocalDays(cursor, -1);
+      continue;
+    }
+
+    if (cursor === todayKey && !done.has(cursor)) {
       cursor = addLocalDays(cursor, -1);
       continue;
     }

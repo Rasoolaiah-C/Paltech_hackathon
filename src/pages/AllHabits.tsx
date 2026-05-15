@@ -5,7 +5,9 @@ import HabitList from '../components/HabitList';
 import { useHabits } from '../hooks/useHabits';
 import type { CheckInStatus, HabitStatus, HabitWithProgress } from '../types/habit';
 
-const today = () => new Date().toISOString().slice(0, 10);
+import { toLocalDateKey } from '../utils/localDate';
+
+const today = () => toLocalDateKey();
 
 export default function AllHabits() {
   const {
@@ -18,6 +20,7 @@ export default function AllHabits() {
     pauseHabit,
     recordCheckIn,
     updateHabit,
+    updateHabitStatus,
   } = useHabits();
   const [editingHabit, setEditingHabit] = useState<HabitWithProgress | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -59,16 +62,16 @@ export default function AllHabits() {
           <p className="eyebrow">Manage</p>
           <h2>All Habits</h2>
         </div>
-        <div className="dashboard__actions">
+        <div className="dashboard__actions dashboard__actions--tabs">
           <button
-            className={activeTab === 'list' ? 'button' : 'button button--secondary'}
+            className={activeTab === 'list' ? 'tab-button tab-button--active' : 'tab-button'}
             onClick={() => setActiveTab('list')}
             type="button"
           >
             List
           </button>
           <button
-            className={activeTab === 'history' ? 'button' : 'button button--secondary'}
+            className={activeTab === 'history' ? 'tab-button tab-button--active' : 'tab-button'}
             onClick={() => {
               setEditingHabit(null);
               setIsFormOpen(false);
@@ -149,6 +152,7 @@ export default function AllHabits() {
               }}
               onPauseHabit={pauseHabit}
               onRecordCheckIn={handleRecordCheckIn}
+              onUpdateStatus={updateHabitStatus}
               title={`${statusFilter} habits`}
             />
           ))}

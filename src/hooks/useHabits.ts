@@ -24,21 +24,8 @@ import type {
   HabitStatus,
   UpdateHabitInput,
 } from '../types/habit';
-
-const today = () => new Date().toISOString().slice(0, 10);
-
-const toDate = (date: string) => {
-  const [year, month, day] = date.split('-').map(Number);
-  return new Date(year, month - 1, day);
-};
-
-const toDateKey = (date: Date) => date.toISOString().slice(0, 10);
-
-const addDays = (date: Date, days: number) => {
-  const nextDate = new Date(date);
-  nextDate.setDate(nextDate.getDate() + days);
-  return nextDate;
-};
+import { calculateHabitStats, isHabitScheduledOnDate } from '../utils/habitStats';
+import { addLocalDays, isOlderThanDays, toLocalDateKey } from '../utils/localDate';
 
 const withoutUndefined = (input: Record<string, unknown>) =>
   Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined));
@@ -65,76 +52,14 @@ const normaliseHabitInput = (input: CreateHabitInput | UpdateHabitInput) =>
     endDate: input.endDate?.trim(),
   });
 
-const isPausedOnDate = (exceptions: Exception[], date: string) =>
-  exceptions.some((exception) => {
-    const startDate = exception.startDate ?? exception.date;
-    const endDate = exception.endDate ?? exception.date;
-    return date >= startDate && date <= endDate;
-  });
-
-const isExpectedOnDate = (habit: Habit, date: string, exceptions: Exception[] = []) => {
-  if (habit.startDate && date < habit.startDate) {
-    return false;
-  }
-
-  if (habit.endDate && date > habit.endDate) {
-    return false;
-  }
-
-  if (isPausedOnDate(exceptions, date)) {
-    return false;
-  }
-
-  if (habit.scheduleType === 'Daily' || habit.scheduleType === 'WeeklyCount') {
-    return true;
-  }
-
-  if (habit.scheduleType === 'Monthly') {
-    return toDate(date).getDate() === toDate(habit.startDate).getDate();
-  }
-
-  const weekday = toDate(date).toLocaleDateString('en-US', { weekday: 'long' });
-  return habit.scheduleDays.includes(weekday);
-};
-
 const isComplete = (checkIn?: CheckIn) => checkIn?.status === 'Done';
-
-const calculateCurrentStreak = (habit: Habit, checkIns: CheckIn[], exceptions: Exception[]) => {
-  const checkInsByDate = new Map(checkIns.map((checkIn) => [checkIn.date, checkIn]));
-  let streak = 0;
-  let cursor = toDate(today());
-  const todayKey = today();
-
-  for (let index = 0; index < 366; index += 1) {
-    const dateKey = toDateKey(cursor);
-
-    if (!isExpectedOnDate(habit, dateKey, exceptions)) {
-      cursor = addDays(cursor, -1);
-      continue;
-    }
-
-    if (dateKey === todayKey && !isComplete(checkInsByDate.get(dateKey))) {
-      cursor = addDays(cursor, -1);
-      continue;
-    }
-
-    if (!isComplete(checkInsByDate.get(dateKey))) {
-      break;
-    }
-
-    streak += 1;
-    cursor = addDays(cursor, -1);
-  }
-
-  return streak;
-};
 
 const buildHistory = (
   habits: Habit[],
   checkInsByHabitId: Record<string, CheckIn[]>,
   exceptionsByHabitId: Record<string, Exception[]>,
 ) => {
-  const todayKey = today();
+  const todayKey = toLocalDateKey();
   const entries: HabitHistoryEntry[] = [];
 
   habits.forEach((habit) => {
@@ -143,14 +68,14 @@ const buildHistory = (
     const checkInsByDate = new Map(checkIns.map((checkIn) => [checkIn.date, checkIn]));
 
     for (let index = 0; index < 30; index += 1) {
-      const date = toDateKey(addDays(toDate(todayKey), -index));
+      const date = addLocalDays(todayKey, -index);
       const checkIn = checkInsByDate.get(date);
       const pause = exceptions.find((exception) => {
         const startDate = exception.startDate ?? exception.date;
         const endDate = exception.endDate ?? exception.date;
         return date >= startDate && date <= endDate;
       });
-      const expected = isExpectedOnDate(habit, date, exceptions);
+      const expected = isHabitScheduledOnDate(habit, date, exceptions);
 
       entries.push({
         date,
@@ -348,6 +273,16 @@ export function useHabits() {
         throw new Error('Habit not found for the current user.');
       }
 
+      const todayKey = toLocalDateKey();
+
+      if (input.date > todayKey) {
+        throw new Error('Check-ins cannot be recorded for future dates.');
+      }
+
+      if (isOlderThanDays(input.date, 7)) {
+        throw new Error('Check-ins can only be backdated up to 7 days.');
+      }
+
       const checkInRef = doc(db, 'habits', input.habitId, 'checkIns', input.date);
 
       await setDoc(
@@ -444,18 +379,20 @@ export function useHabits() {
   const visibleExceptionsByHabitId = Object.fromEntries(
     Object.entries(exceptionsByHabitId).filter(([habitId]) => visibleHabitIds.has(habitId)),
   );
-  const todayKey = today();
+  const todayKey = toLocalDateKey();
   const habitsWithProgress = userHabits.map((habit) => {
     const habitCheckIns = visibleCheckInsByHabitId[habit.id] ?? [];
     const habitExceptions = visibleExceptionsByHabitId[habit.id] ?? [];
     const todayCheckIn = habitCheckIns.find((checkIn) => checkIn.date === todayKey);
+    const stats = calculateHabitStats(habit, habitCheckIns, habitExceptions);
 
     return {
       ...habit,
       checkIns: habitCheckIns,
       exceptions: habitExceptions,
-      currentStreak: calculateCurrentStreak(habit, habitCheckIns, habitExceptions),
-      isExpectedToday: isExpectedOnDate(habit, todayKey, habitExceptions),
+      currentStreak: stats.currentStreak,
+      longestStreak: stats.longestStreak,
+      isExpectedToday: isHabitScheduledOnDate(habit, todayKey, habitExceptions),
       isTodayDone: isComplete(todayCheckIn),
       todayCheckIn,
     };

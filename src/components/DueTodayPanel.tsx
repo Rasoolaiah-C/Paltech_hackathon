@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import HabitStreaks from './HabitStreaks';
 import type { CheckInStatus, HabitWithProgress } from '../types/habit';
 
 interface DueTodayPanelProps {
@@ -55,7 +56,6 @@ export default function DueTodayPanel({ habits, onRecordCheckIn }: DueTodayPanel
     <section className="due-panel" aria-labelledby="due-today-title">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Zero friction</p>
           <h2 id="due-today-title">Due Today</h2>
         </div>
         <span>{dueTodayHabits.length} left</span>
@@ -81,8 +81,13 @@ export default function DueTodayPanel({ habits, onRecordCheckIn }: DueTodayPanel
               <article className="due-card" key={habit.id}>
                 <div>
                   <h3>{habit.name}</h3>
-                  <p>
-                    <span>{habit.currentStreak} day streak</span>
+                  <p className="due-card__meta">
+                    <HabitStreaks
+                      compact
+                      currentStreak={habit.currentStreak}
+                      longestStreak={habit.longestStreak}
+                      scheduleType={habit.scheduleType}
+                    />
                     {habit.category && <span>{habit.category}</span>}
                   </p>
                 </div>

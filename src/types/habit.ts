@@ -52,6 +52,7 @@ export interface HabitWithProgress extends Habit {
   checkIns: CheckIn[];
   exceptions: Exception[];
   currentStreak: number;
+  longestStreak: number;
   isExpectedToday: boolean;
   isTodayDone: boolean;
   todayCheckIn?: CheckIn;
@@ -65,4 +66,10 @@ export interface HabitHistoryEntry {
   status: 'Done' | 'Missed' | 'Paused' | 'Not due' | 'Pending';
   value: number;
   reason: string;
+}
+
+export interface BadgeAward {
+  id: string;
+  badgeId: string;
+  earnedAt: string;
 }
