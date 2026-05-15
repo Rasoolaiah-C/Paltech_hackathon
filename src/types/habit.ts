@@ -40,6 +40,8 @@ export interface Exception {
 
 export type CreateHabitInput = Omit<Habit, 'id' | 'userId' | 'status'> & {
   status?: HabitStatus;
+  reminderEnabled?: boolean;
+  reminderTime?: string;
 };
 
 export type UpdateHabitInput = Partial<CreateHabitInput> & {

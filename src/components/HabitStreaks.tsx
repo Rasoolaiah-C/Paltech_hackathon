@@ -12,7 +12,11 @@ const unitLabel = (scheduleType: Habit['scheduleType'], count: number) => {
     return count === 1 ? 'week' : 'weeks';
   }
 
-  return count === 1 ? 'day' : 'days';
+  if (scheduleType === 'Monthly') {
+    return count === 1 ? 'month' : 'months';
+  }
+
+  return count === 1 ? 'streak' : 'streaks';
 };
 
 export default function HabitStreaks({

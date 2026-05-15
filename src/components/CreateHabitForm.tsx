@@ -2,6 +2,7 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 import type { CreateHabitInput, Habit, HabitStatus, ScheduleType, TargetType } from '../types/habit';
 import { toLocalDateKey } from '../utils/localDate';
+import { isValidReminderTime } from '../utils/validation';
 
 const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const today = () => toLocalDateKey();
@@ -30,6 +31,8 @@ export default function CreateHabitForm({ habit, onCancel, onCreateHabit }: Crea
   const [startDate, setStartDate] = useState(habit?.startDate ?? today());
   const [endDate, setEndDate] = useState(habit?.endDate ?? '');
   const [status, setStatus] = useState<HabitStatus>(habit?.status ?? 'Active');
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderTime, setReminderTime] = useState('09:00');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -89,6 +92,11 @@ export default function CreateHabitForm({ habit, onCancel, onCreateHabit }: Crea
       return;
     }
 
+    if (reminderEnabled && !isValidReminderTime(reminderTime)) {
+      setError('Please enter a valid reminder time when reminders are enabled.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -105,6 +113,8 @@ export default function CreateHabitForm({ habit, onCancel, onCreateHabit }: Crea
         startDate,
         endDate,
         status,
+        reminderEnabled,
+        reminderTime: reminderEnabled ? reminderTime : undefined,
       });
       if (isEditing) {
         onCancel?.();
@@ -267,6 +277,29 @@ export default function CreateHabitForm({ habit, onCancel, onCreateHabit }: Crea
           </select>
         </label>
       )}
+
+      <fieldset className="reminder-section">
+        <legend>Reminder (optional)</legend>
+        <label className="inline-control">
+          <input
+            checked={reminderEnabled}
+            onChange={(event) => setReminderEnabled(event.target.checked)}
+            type="checkbox"
+          />
+          Enable reminder
+        </label>
+        {reminderEnabled && (
+          <label>
+            Reminder time
+            <input
+              onChange={(event) => setReminderTime(event.target.value)}
+              required
+              type="time"
+              value={reminderTime}
+            />
+          </label>
+        )}
+      </fieldset>
 
       {scheduleType === 'WeeklyCount' && (
         <label>

@@ -30,27 +30,32 @@ import { addLocalDays, isOlderThanDays, toLocalDateKey } from '../utils/localDat
 const withoutUndefined = (input: Record<string, unknown>) =>
   Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined));
 
-const normaliseHabitInput = (input: CreateHabitInput | UpdateHabitInput) =>
-  withoutUndefined({
-    ...input,
-    name: input.name?.trim(),
-    description: input.description?.trim(),
-    category: input.category?.trim(),
-    unitLabel: input.unitLabel?.trim(),
+const REMINDER_DOC_ID = 'default';
+
+const normaliseHabitInput = (input: CreateHabitInput | UpdateHabitInput) => {
+  const { reminderEnabled, reminderTime, ...safeInput } = input;
+
+  return withoutUndefined({
+    ...safeInput,
+    name: safeInput.name?.trim(),
+    description: safeInput.description?.trim(),
+    category: safeInput.category?.trim(),
+    unitLabel: safeInput.unitLabel?.trim(),
     scheduleDays:
-      input.scheduleType === undefined
-        ? input.scheduleDays
-        : input.scheduleType === 'SpecificWeekdays'
-          ? (input.scheduleDays ?? [])
+      safeInput.scheduleType === undefined
+        ? safeInput.scheduleDays
+        : safeInput.scheduleType === 'SpecificWeekdays'
+          ? (safeInput.scheduleDays ?? [])
           : [],
     weeklyTargetCount:
-      input.scheduleType === undefined
-        ? input.weeklyTargetCount
-        : input.scheduleType === 'WeeklyCount'
-          ? (input.weeklyTargetCount ?? 1)
+      safeInput.scheduleType === undefined
+        ? safeInput.weeklyTargetCount
+        : safeInput.scheduleType === 'WeeklyCount'
+          ? (safeInput.weeklyTargetCount ?? 1)
           : 1,
-    endDate: input.endDate?.trim(),
+    endDate: safeInput.endDate?.trim(),
   });
+};
 
 const isComplete = (checkIn?: CheckIn) => checkIn?.status === 'Done';
 
@@ -212,7 +217,7 @@ export function useHabits() {
         throw new Error('Target value must be greater than 0.');
       }
 
-      await addDoc(collection(db, 'habits'), {
+      const habitRef = await addDoc(collection(db, 'habits'), {
         ...normaliseHabitInput(input),
         scheduleDays: input.scheduleType === 'SpecificWeekdays' ? input.scheduleDays : [],
         weeklyTargetCount: input.scheduleType === 'WeeklyCount' ? input.weeklyTargetCount : 1,
@@ -222,6 +227,21 @@ export function useHabits() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+
+      if (input.reminderEnabled && input.reminderTime?.trim()) {
+        await setDoc(
+          doc(db, 'habits', habitRef.id, 'reminders', REMINDER_DOC_ID),
+          {
+            id: REMINDER_DOC_ID,
+            habitId: habitRef.id,
+            time: input.reminderTime.trim(),
+            enabled: true,
+            userId: user.uid,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      }
     },
     [user],
   );

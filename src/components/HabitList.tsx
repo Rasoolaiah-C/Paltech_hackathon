@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import HabitStreaks from './HabitStreaks';
 import type { CheckInStatus, HabitWithProgress } from '../types/habit';
 import { toLocalDateKey } from '../utils/localDate';
@@ -73,6 +73,7 @@ export default function HabitList({
   onUpdateStatus,
   title,
 }: HabitListProps) {
+  const navigate = useNavigate();
   const [savingHabitId, setSavingHabitId] = useState<string | null>(null);
   const [pauseHabitId, setPauseHabitId] = useState<string | null>(null);
   const [pauseStartDate, setPauseStartDate] = useState(today());
@@ -235,6 +236,9 @@ export default function HabitList({
                     <Link className="button button--ghost" to={`/habits/${habit.id}`}>
                       Open
                     </Link>
+                    <button className="button button--ghost" onClick={() => navigate(`/habits/${habit.id}?section=reminder`)} type="button">
+                      Reminder
+                    </button>
                     <button className="button button--ghost" onClick={() => onEditHabit(habit)} type="button">
                       Edit
                     </button>

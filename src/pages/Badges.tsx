@@ -22,6 +22,28 @@ export default function Badges() {
       ) : (
         <>
           {error && <p className="form-error">{error.message}</p>}
+          <section className="badge-explanation">
+            <p>
+              Badges help you stay motivated by rewarding consistency and progress.
+              Each registered habit can earn a badge tied to its schedule: daily habits build streak badges for consecutive days, weekly habits earn awards for consecutive completed weeks, and monthly habits reward longer consistency.
+            </p>
+          </section>
+          <section className="habit-badge-summary">
+            <h3>Per-habit badge goals</h3>
+            <ul>
+              {habits.map((habit) => (
+                <li key={habit.id}>
+                  <strong>{habit.name}</strong> — {habit.scheduleType === 'Daily'
+                    ? 'Daily streak badge for consistent daily completion'
+                    : habit.scheduleType === 'WeeklyCount'
+                      ? 'Weekly consistency badge for meeting your weekly target'
+                      : habit.scheduleType === 'Monthly'
+                        ? 'Monthly badge for staying consistent each month'
+                        : 'Habit badge for scheduled weekday consistency'}
+                </li>
+              ))}
+            </ul>
+          </section>
           <div className="badge-grid">
             {BADGE_DEFINITIONS.map((badge) => {
               const award = awardsByBadgeId.get(badge.id);

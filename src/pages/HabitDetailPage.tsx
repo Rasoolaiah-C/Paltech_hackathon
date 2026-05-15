@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import HabitDetail from '../components/HabitDetail';
 import { useBadges } from '../hooks/useBadges';
 import { useHabits } from '../hooks/useHabits';
@@ -6,6 +6,7 @@ import { computeEligibleBadgeIds } from '../utils/badgeEligibility';
 
 export default function HabitDetailPage() {
   const { habitId } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { deleteHabit, habits, loading, updateHabitStatus } = useHabits();
   const { earnedBadgeIds } = useBadges(habits);
@@ -28,6 +29,8 @@ export default function HabitDetailPage() {
     );
   }
 
+  const initialSection = searchParams.get('section') === 'reminder' ? 'reminder' : 'overview';
+
   return (
     <section className="dashboard">
       <header className="dashboard__header">
@@ -41,6 +44,7 @@ export default function HabitDetailPage() {
       </header>
 
       <HabitDetail
+        initialSection={initialSection}
         earnedBadgeIds={earnedBadgeIds}
         eligibleBadgeIds={eligibleBadgeIds}
         habit={habit}

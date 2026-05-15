@@ -6,6 +6,8 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
+  updatePassword,
+  updateProfile,
 } from 'firebase/auth';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
@@ -16,6 +18,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateUsername: (username: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,6 +70,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
     await signOut(auth);
   }, []);
 
+  const updateUsername = useCallback(async (username: string) => {
+    if (!auth.currentUser) {
+      throw new Error('No authenticated user.');
+    }
+
+    await updateProfile(auth.currentUser, {
+      displayName: username,
+    });
+
+    await setDoc(
+      doc(db, 'users', auth.currentUser.uid),
+      {
+        username,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  }, []);
+
+  const changePassword = useCallback(async (newPassword: string) => {
+    if (!auth.currentUser) {
+      throw new Error('No authenticated user.');
+    }
+
+    await updatePassword(auth.currentUser, newPassword);
+  }, []);
+
   const value = useMemo<AuthContextType>(
     () => ({
       user,
@@ -73,6 +104,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       login,
       register,
       logout,
+      updateUsername,
+      updatePassword: changePassword,
     }),
     [user, loading, login, register, logout],
   );

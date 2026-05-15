@@ -2,16 +2,18 @@ import { useCallback, useEffect, useState } from 'react';
 import { deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
+import { toLocalDateKey } from '../utils/localDate';
 import type { Reminder } from '../types/reminder';
 import { isValidReminderTime } from '../utils/validation';
 
 const REMINDER_DOC_ID = 'default';
 
-export function useReminder(habitId?: string) {
+export function useReminder(habitId?: string, onReminderDue?: () => void) {
   const { user } = useAuth();
   const [reminder, setReminder] = useState<Reminder | null>(null);
   const [loading, setLoading] = useState(Boolean(habitId));
   const [error, setError] = useState<Error | null>(null);
+  const [lastAlertDate, setLastAlertDate] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !habitId) {
@@ -43,6 +45,30 @@ export function useReminder(habitId?: string) {
 
     return unsubscribe;
   }, [habitId, user]);
+
+  useEffect(() => {
+    if (!user || !habitId || !reminder?.enabled || !onReminderDue) {
+      return undefined;
+    }
+
+    const checkReminder = () => {
+      const now = new Date();
+      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const todayKey = toLocalDateKey();
+
+      if (currentTime === reminder.time && lastAlertDate !== todayKey) {
+        onReminderDue();
+        setLastAlertDate(todayKey);
+      }
+    };
+
+    checkReminder();
+    const intervalId = window.setInterval(checkReminder, 10000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [habitId, onReminderDue, reminder?.enabled, reminder?.time, lastAlertDate, user]);
 
   const saveReminder = useCallback(
     async (time: string, enabled: boolean) => {

@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BADGE_DEFINITIONS } from '../constants/badges';
 import { useCheckIns } from '../hooks/useCheckIns';
 import { useExceptions } from '../hooks/useExceptions';
@@ -14,6 +14,7 @@ interface HabitDetailProps {
   earnedBadgeIds: Set<string>;
   eligibleBadgeIds: Set<string>;
   habit: HabitWithProgress;
+  initialSection?: 'overview' | 'reminder';
   onArchive: () => Promise<void>;
   onDelete: () => Promise<void>;
   onPause: () => Promise<void>;
@@ -28,6 +29,7 @@ export default function HabitDetail({
   earnedBadgeIds,
   eligibleBadgeIds,
   habit,
+  initialSection,
   onArchive,
   onDelete,
   onPause,
@@ -35,7 +37,13 @@ export default function HabitDetail({
 }: HabitDetailProps) {
   const { checkIns, deleteCheckIn, upsertCheckIn } = useCheckIns(habit.id);
   const { addException, editException, exceptions, removeException } = useExceptions(habit.id);
-  const { reminder, removeReminder, saveReminder } = useReminder(habit.id);
+  const [reminderDraft, setReminderDraft] = useState<{ enabled: boolean; time: string } | null>(null);
+  const reminderSectionRef = useRef<HTMLFormElement | null>(null);
+  const [activeSection, setActiveSection] = useState(initialSection ?? 'overview');
+  const onReminderDue = useCallback(() => {
+    window.alert(`Reminder: ${habit.name} is scheduled now. Complete your habit.`);
+  }, [habit.name]);
+  const { reminder, removeReminder, saveReminder } = useReminder(habit.id, onReminderDue);
   const [allowBackdate, setAllowBackdate] = useState(false);
   const [checkInDate, setCheckInDate] = useState(toLocalDateKey());
   const [status, setStatus] = useState<CheckInStatus>('Done');
@@ -45,12 +53,24 @@ export default function HabitDetail({
   const [exceptionReason, setExceptionReason] = useState('');
   const [editingExceptionDate, setEditingExceptionDate] = useState<string | null>(null);
   const [editingExceptionReason, setEditingExceptionReason] = useState('');
-  const [reminderDraft, setReminderDraft] = useState<{ enabled: boolean; time: string } | null>(null);
   const reminderTime = reminderDraft?.time ?? reminder?.time ?? '09:00';
   const reminderEnabled = reminderDraft?.enabled ?? reminder?.enabled ?? false;
   const [checkInPage, setCheckInPage] = useState(0);
   const [message, setMessage] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
+  useEffect(() => {
+    if (initialSection === 'reminder') {
+      setActiveSection('reminder');
+    }
+  }, [initialSection]);
+
+  useEffect(() => {
+    if (activeSection === 'reminder' && reminderSectionRef.current) {
+      reminderSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      reminderSectionRef.current.focus();
+    }
+  }, [activeSection]);
+
   const stats = useMemo(() => calculateHabitStats(habit, checkIns, exceptions), [checkIns, exceptions, habit]);
   const checkInsByDate = useMemo(() => new Map(checkIns.map((checkIn) => [checkIn.date, checkIn])), [checkIns]);
   const exceptionsByDate = useMemo(
@@ -136,6 +156,23 @@ export default function HabitDetail({
           {message || statusMessage}
         </p>
       )}
+
+      <div className="habit-detail-tabs">
+        <button
+          className={activeSection === 'overview' ? 'button button--secondary' : 'button button--ghost'}
+          onClick={() => setActiveSection('overview')}
+          type="button"
+        >
+          Overview
+        </button>
+        <button
+          className={activeSection === 'reminder' ? 'button button--secondary' : 'button button--ghost'}
+          onClick={() => setActiveSection('reminder')}
+          type="button"
+        >
+          Reminder
+        </button>
+      </div>
 
       <article className="habit-config-card">
         <h3>Configuration</h3>
@@ -446,7 +483,12 @@ export default function HabitDetail({
         </div>
       </form>
 
-      <form className="detail-form" onSubmit={handleReminderSubmit}>
+      <form
+        className="detail-form"
+        onSubmit={handleReminderSubmit}
+        ref={reminderSectionRef}
+        tabIndex={-1}
+      >
         <h3>Reminder</h3>
         <label className="inline-control">
           <input
